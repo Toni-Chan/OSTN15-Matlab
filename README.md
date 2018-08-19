@@ -19,8 +19,13 @@ In the batch conversion case:
 - Malformatted input leads unexpected output
 
 Software copyright (c) Tony Chen 2018
+
 Released under the MIT licence (http://www.opensource.org/licenses/mit-license.php)
+
 OSTN15 and OSGM15 are trademarks of Ordnance Survey
-Embedded OSTN15 and OSGM15 data (c) Crown copyright 2015. All rights reserved.)
+
+Embedded OSTN15 and OSGM15 data (c) Crown copyright 2015. All rights reserved.
+
 LIDAR Data uses 1m DSM data at best. LIDAR data use under the Open Government Licence v3.0 of Environmental Agency, GB Govt.
+
 [LIDAR DSM-1m](http://environment.data.gov.uk/ds/survey/#/survey)
