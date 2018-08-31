@@ -1,8 +1,8 @@
 //
-//  main.c
+//  OSTN15.c
 //  OSTN15
 //
-//  Created by Tony Chen at 27/7/2018.
+//  Created by Tony Chen on 21/7/2018.
 //  Copyright (c) 2018 Tony Chen. All rights reserved.
 //
 
@@ -62,7 +62,7 @@ int checkCommand(mxArray *input, char *words)
 void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray* prhs[])
 {
 	/* Check for proper number of arguments */
-	LIDARTerrainFile *LTFile = (LIDARTerrainFile*)malloc(sizeof(LIDARTerrainFile));
+	LIDARTerrainFile *LTFile = (LIDARTerrainFile*)mxMalloc(sizeof(LIDARTerrainFile));
 	LTFile->next = NULL;
 
 	if (nrhs < 1)
@@ -92,7 +92,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray* prhs[])
 	}
 	else if ((nrhs == 2 || nrhs == 3) && checkCommand(TYP, "gps-to-grid") == 0)
 	{
-		LatLonDecimal *latLon = (LatLonDecimal*)malloc(sizeof(LatLonDecimal));
+		LatLonDecimal *latLon = (LatLonDecimal*)mxMalloc(sizeof(LatLonDecimal));
 		EastingNorthing *en;
 				
 		if (nrhs == 2)
@@ -105,13 +105,13 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray* prhs[])
 			mexPrintf("%s\n", filename);
 			FILE *inputSequence = fopen(filename, "r");
 
-			char *outname = (char*)malloc(60);
+			char *outname = (char*)mxMalloc(60);
 			strncpy(outname, filename, strlen(filename) - 4);
 			strncpy(outname + strlen(filename) - 3, "\0", 1);
 			strcat(outname, "-Output.csv\0");
 			FILE *outputSequence = fopen(outname, "w");
 
-			char *outname2 = (char*)malloc(60);
+			char *outname2 = (char*)mxMalloc(60);
 			strncpy(outname2, filename, strlen(filename) - 4);
 			strncpy(outname2 + strlen(filename) - 3, "\0", 1);
 			strcat(outname2, "-Raw.csv\0");
@@ -158,7 +158,6 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray* prhs[])
 			fclose(outputSequence);
 			fclose(inputSequence);
 			fclose(outputSequence2);
-			return;
 		}
 		else 
 		{
@@ -217,12 +216,11 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray* prhs[])
 				eDisplay[i] = en->e;
 				height[i] = findHeight(en, txt, LTFile);
 			}
-			return;
 		}
 	}
 	else if ((nrhs == 2 || nrhs == 3) && checkCommand(TYP, "grid-to-gps") == 0)
 	{
-		EastingNorthing *en = (EastingNorthing*)malloc(sizeof(EastingNorthing)), *enETRS89;
+		EastingNorthing *en = (EastingNorthing*)mxMalloc(sizeof(EastingNorthing)), *enETRS89;
 		LatLonDecimal *latLon;
 
 		// with no additional args, convert CSV (or similar) on STDIN to CSV on STDOUT
@@ -234,7 +232,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray* prhs[])
 					"Input file name must be a string.");
 			filename = mxArrayToString(Location);
 			FILE *inputSequence = fopen(filename, "r");
-			char *outname = (char*)malloc(60);
+			char *outname = (char*)mxMalloc(60);
 			strncpy(outname, filename, strlen(filename) - 4);
 			strncpy(outname + strlen(filename) - 3, "\0", 1);
 			strcat(outname, "-Output.csv\0");
@@ -251,9 +249,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray* prhs[])
 				fprintf(outputSequence, "%.8lf,%.8lf\n", latLon->lat, latLon->lon);
 			}
 			fclose(outputSequence);
-			fclose(inputSequence);
-			return;
-			
+			fclose(inputSequence);			
 		}
 		else 
 		{
@@ -295,7 +291,6 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray* prhs[])
 				lngDisplay[i] = latLon->lon;
 				
 			}
-			return;
 		}
 	}
 	else
@@ -327,6 +322,14 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray* prhs[])
 			"OSTN15 and OSGM15 are trademarks of Ordnance Survey\n"
 			"Embedded OSTN15 and OSGM15 data (c) Crown copyright 2015. All rights reserved.\n");
 		bool passed = test(true);
-		return;
 	}
+	LIDARTerrainFile *temp = LTFile->next, *use;
+	while (temp)
+	{
+		mxFree(temp->data);
+		use = temp;
+		temp = temp->next;
+		mxFree(use);
+	}
+	return;
 }

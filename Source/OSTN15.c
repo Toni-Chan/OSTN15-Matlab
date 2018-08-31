@@ -27,13 +27,14 @@
 #define originalDataCRC    790474494
 
 static char blkNow[2];
-static int blke=0, blkn=0;
+static int blke = 0, blkn = 0;
+static int legEblk = -1, legNblk = -1;
 
 double piOver180 = 0.017453292519943295769236907684886127134428718885417254560971914401710091146034494436822415696345094822;
 double oneEightyOverPi = 57.29577951308232087679815481410517033240547246656432154916024386120284714832155263244096899585111094418;
 
 
-EastingNorthing *eastingNorthingFromLatLon(LatLonDecimal *latLon, Ellipsoid *ellipsoid, MapProjection *projection) 
+EastingNorthing *eastingNorthingFromLatLon(LatLonDecimal *latLon, Ellipsoid *ellipsoid, MapProjection *projection)
 {
 	//Constants
 	double a = ellipsoid->semiMajorAxis;
@@ -56,12 +57,12 @@ EastingNorthing *eastingNorthingFromLatLon(LatLonDecimal *latLon, Ellipsoid *ell
 	double eta2 = v / rho - 1.0; //B5
 
 	double M = b * F0 * (
-						(1.0 + n + 1.25 * dbl(n) + 1.25 * tri(n))*(phi - PHI0) -
-						(3.0 * n + 3.0 * dbl(n) + 21.0 / 8 * tri(n))*sin(phi - PHI0)*cos(phi +PHI0) +
-						(1.875 * dbl(n) + 1.875 * tri(n))*sin(2*(phi - PHI0))*cos(2*(phi + PHI0)) -
-						35.0 / 24.0 * tri(n) * sin(3*(phi - PHI0))*cos(3*(phi + PHI0))
-						); //B6
-	
+		(1.0 + n + 1.25 * dbl(n) + 1.25 * tri(n))*(phi - PHI0) -
+		(3.0 * n + 3.0 * dbl(n) + 21.0 / 8 * tri(n))*sin(phi - PHI0)*cos(phi + PHI0) +
+		(1.875 * dbl(n) + 1.875 * tri(n))*sin(2 * (phi - PHI0))*cos(2 * (phi + PHI0)) -
+		35.0 / 24.0 * tri(n) * sin(3 * (phi - PHI0))*cos(3 * (phi + PHI0))
+		); //B6
+
 	double I = M + N0;
 	double II = v / 2.0 * sin(phi) * cos(phi);
 	double III = v / 24.0 * sin(phi) * tri(cos(phi)) * (5.0 - dbl(tan(phi)) + 9.0 * eta2);
@@ -72,7 +73,7 @@ EastingNorthing *eastingNorthingFromLatLon(LatLonDecimal *latLon, Ellipsoid *ell
 	double N = I + II * dbl(lambda - LAMBDA0) + III * dbl(dbl(lambda - LAMBDA0)) + IIIA * dbl(tri(lambda - LAMBDA0)); //B7
 	double E = E0 + IV * (lambda - LAMBDA0) + V * tri(lambda - LAMBDA0) + VI * dbl(lambda - LAMBDA0) * tri(lambda - LAMBDA0); //B8
 
-	EastingNorthing *en = (EastingNorthing*)malloc(sizeof(EastingNorthing));
+	EastingNorthing *en = (EastingNorthing*)mxMalloc(sizeof(EastingNorthing));
 	en->n = N;
 	en->e = E;
 	en->elevation = latLon->elevation;
@@ -123,7 +124,7 @@ LatLonDecimal *latLonFromEastingNorthing(EastingNorthing *en, Ellipsoid *ellipso
 			);
 
 	} while (fabs(en->n - N0 - M) >= 0.00001);
-	
+
 	double v = a * F0 * pow(1 - e2 * pow(sin(phiN), 2), -0.5); //B3
 	double rho = a * F0 * (1 - e2) * pow(1 - e2 * pow(sin(phiN), 2), -1.5); //B4
 	double eta2 = v / rho - 1; //B5
@@ -132,14 +133,14 @@ LatLonDecimal *latLonFromEastingNorthing(EastingNorthing *en, Ellipsoid *ellipso
 	double VIII = tan(phiN) / (24.0 * rho * tri(v)) * (5 + 3 * dbl(tan(phiN)) + eta2 - 9 * dbl(tan(phiN)) * eta2);
 	double IX = tan(phiN) / (24.0 * rho * tri(v) * dbl(v)) * (61 + 90 * dbl(tan(phiN)) + 45 * dbl(dbl(tan(phiN))));
 	double X = 1.0 / (v * cos(phiN));
-	double XI = 1.0 / (6 * cos(phiN) * tri(v)) * (v/rho + 2 * dbl(tan(phiN)));
+	double XI = 1.0 / (6 * cos(phiN) * tri(v)) * (v / rho + 2 * dbl(tan(phiN)));
 	double XII = 1.0 / (120 * cos(phiN) * tri(v) * dbl(v)) * (5.0 + 28.0 * dbl(tan(phiN)) + 24 * dbl(dbl(tan(phiN))));
 	double XIIA = 1.0 / (5040 * cos(phiN) * tri(v) * dbl(v) * dbl(v)) * (61.0 + 662.0 * dbl(tan(phiN)) + 1320 * dbl(dbl(tan(phiN))) + 720 * dbl(tri(tan(phiN))));
 
-	double phi = phiN - VII * dbl(E-E0) + VIII*pow(E - E0,4) - IX * pow(E-E0, 6);
-	double lambda = LAMBDA0 + X*(E-E0) - XI * tri(E-E0) + XII * pow(E - E0, 5) - XIIA * pow(E - E0, 7);
+	double phi = phiN - VII * dbl(E - E0) + VIII * pow(E - E0, 4) - IX * pow(E - E0, 6);
+	double lambda = LAMBDA0 + X * (E - E0) - XI * tri(E - E0) + XII * pow(E - E0, 5) - XIIA * pow(E - E0, 7);
 
-	LatLonDecimal *latLon = (LatLonDecimal*)malloc(sizeof(LatLonDecimal));
+	LatLonDecimal *latLon = (LatLonDecimal*)mxMalloc(sizeof(LatLonDecimal));
 	latLon->lat = oneEightyOverPi * phi;
 	latLon->lon = oneEightyOverPi * lambda;
 	latLon->elevation = en->elevation;
@@ -155,7 +156,7 @@ LatLonDecimal *ETRS89LatLonFromETRS89EastingNorthing(EastingNorthing *en)
 
 EastingNorthing *OSTN02ShiftsForIndices(int eIndex, int nIndex)
 {
-	EastingNorthing *shifts = (EastingNorthing*)malloc(sizeof(EastingNorthing));
+	EastingNorthing *shifts = (EastingNorthing*)mxMalloc(sizeof(EastingNorthing));
 	shifts->e = shifts->n = shifts->elevation = shifts->geoid = 0;
 	if (nIndex < 0 || nIndex > 1250) return shifts;
 
@@ -175,7 +176,7 @@ EastingNorthing *OSTN02ShiftsForIndices(int eIndex, int nIndex)
 
 EastingNorthing *shiftsForEastingNorthing(EastingNorthing *en)
 {
-	EastingNorthing *shifts = (EastingNorthing*)malloc(sizeof(EastingNorthing));
+	EastingNorthing *shifts = (EastingNorthing*)mxMalloc(sizeof(EastingNorthing));
 	shifts->e = shifts->n = shifts->elevation = shifts->geoid = 0;
 
 	const int e0 = (int)(en->e / (1000.0));
@@ -230,7 +231,7 @@ EastingNorthing *OSGB36EastingNorthingFromETRS89EastingNorthing(EastingNorthing 
 	EastingNorthing *shifts = shiftsForEastingNorthing(en);
 	if (shifts->geoid == 0) return shifts;
 
-	EastingNorthing *shifted = (EastingNorthing*)malloc(sizeof(EastingNorthing));
+	EastingNorthing *shifted = (EastingNorthing*)mxMalloc(sizeof(EastingNorthing));
 	shifted->e = en->e + shifts->e;
 	shifted->n = en->n + shifts->n;
 	shifted->elevation = en->elevation - shifts->elevation;
@@ -241,10 +242,10 @@ EastingNorthing *OSGB36EastingNorthingFromETRS89EastingNorthing(EastingNorthing 
 
 EastingNorthing *ETRS89EastingNorthingFromOSGB36EastingNorthing(EastingNorthing *en)
 {
-	EastingNorthing 
-		*shifts = (EastingNorthing *)malloc(sizeof(EastingNorthing)), 
-		*prevShifts = (EastingNorthing *)malloc(sizeof(EastingNorthing)), 
-		*shifted = (EastingNorthing *)malloc(sizeof(EastingNorthing));
+	EastingNorthing
+		*shifts = (EastingNorthing *)mxMalloc(sizeof(EastingNorthing)),
+		*prevShifts = (EastingNorthing *)mxMalloc(sizeof(EastingNorthing)),
+		*shifted = (EastingNorthing *)mxMalloc(sizeof(EastingNorthing));
 	shifts->e = shifts->n = shifted->elevation = shifted->geoid = 0;  // initialising .elevation and .geoid just avoids warnings
 	do
 	{
@@ -330,7 +331,7 @@ bool test(bool noisily)
 
 	LatLonDecimal actualLatLon, *computedLatLon;
 	EastingNorthing actualEN, *computedEN;
-	char *actualLatLonStr = (char *)malloc(500), *computedLatLonStr = (char *)malloc(500), *actualENStr = (char *)malloc(500), *computedENStr = (char *)malloc(500);
+	char *actualLatLonStr = (char *)mxMalloc(500), *computedLatLonStr = (char *)mxMalloc(500), *actualENStr = (char *)mxMalloc(500), *computedENStr = (char *)mxMalloc(500);
 
 	len = LENGTH_OF(testETRSCoords);
 	for (int i = 0; i < len; i++)
@@ -369,10 +370,10 @@ bool test(bool noisily)
 		if (testPassed) numPassed++;
 		if (noisily) mexPrintf("OSGB36 computed %s, %s\n\n", computedENStr, (testPassed ? "Passed" : "Not Passed"));
 
-		//free(actualLatLonStr);
-		//free(computedLatLonStr);
-		//free(actualENStr);
-		//free(computedENStr);
+		//mxFree(actualLatLonStr);
+		//mxFree(computedLatLonStr);
+		//mxFree(actualENStr);
+		//mxFree(computedENStr);
 	}
 
 	bool allPassed = numTested == numPassed;
@@ -382,20 +383,30 @@ bool test(bool noisily)
 
 LIDARTerrainFile *findFile(char *BLOCK, int fileE, int fileN, LIDARTerrainFile *ter)
 {
-	char *name = (char *)malloc(500);
+	char *name = (char *)mxMalloc(500);
 	//mexPrintf("\n        Loading file .\\LIDAR\\%c%c%02d%02d_DSM_1M.asc\n", BLOCK[0], BLOCK[1], fileE, fileN);
-	sprintf(name, ".\\LIDAR\\%c%c%02d%02d_DSM_1M.asc", BLOCK[0] - 'A' + 'a', BLOCK[1] - 'A' + 'a', fileE, fileN);
+	sprintf(name, "..\\LIDAR\\%c%c%02d%02d_DSM_1M.asc", BLOCK[0] - 'A' + 'a', BLOCK[1] - 'A' + 'a', fileE, fileN);
 	LIDARTerrainFile *tmp = ter;
 	FILE *thisFile;
 	if (!(thisFile = fopen(name, "r")))
 	{
 		char *msg[100];
-		sprintf(msg, "Error missing LIDAR Elevation file %c%c %d%d\n", BLOCK[0], BLOCK[1], fileE, fileN);
-		mexWarnMsgIdAndTxt("MATLAB:OSTN15_Matlab:LackingLIDARElevationFile",
-			msg);
+		char Ep, Np;
+		Ep = fileE % 10 < 5 ? 'W' : 'E';
+		Np = fileN % 10 < 5 ? 'S' : 'N';
+		sprintf(msg, "Error missing LIDAR Elevation file %c%c %02d%02d, find file %c%c%d%d%c%c\n", BLOCK[0], BLOCK[1], fileE, fileN, BLOCK[0], BLOCK[1], fileE / 10, fileN / 10, Np, Ep);
+		if (!(legEblk == fileE && legNblk == fileN))
+		{
+			FILE *d = fopen("warnings.log", "a");
+			fprintf(d, msg);
+			fclose(d);
+		}
+		legEblk = fileE, legNblk = fileN;
+		;		//mexWarnMsgIdAndTxt("MATLAB:OSTN15_Matlab:LackingLIDARElevationFile",
+				//	msg);
 		return NULL;
 	}
-	ter->next = (LIDARTerrainFile*)malloc(sizeof(LIDARTerrainFile));
+	ter->next = (LIDARTerrainFile*)mxMalloc(sizeof(LIDARTerrainFile));
 	tmp = ter->next;
 	tmp->next = NULL;
 	strncpy(tmp->Name, BLOCK, 2);
@@ -409,15 +420,16 @@ LIDARTerrainFile *findFile(char *BLOCK, int fileE, int fileN, LIDARTerrainFile *
 	fgets(temp, 255, thisFile);
 	fgets(temp, 255, thisFile);
 	fgets(temp, 255, thisFile);
-	double **res = (double **)malloc(1001 * sizeof(double*)); 
-	for (int i = 999; i>=0; i--)
+	double **res = (double **)mxMalloc(1001 * sizeof(double*));
+	for (int i = 999; i >= 0; i--)
 	{
-		res[i] = (double *)malloc(1001 * sizeof(double));
+		res[i] = (double *)mxMalloc(1001 * sizeof(double));
 		for (int j = 0; j < 1000; j++)
 		{
 			fscanf(thisFile, "%lf", &res[i][j]);
 		}
 	}
+	fclose(thisFile);
 	tmp->data = res;
 	return tmp;
 }
@@ -427,17 +439,21 @@ double findHeight(EastingNorthing *en, char *blk, LIDARTerrainFile *ter)
 	int E = lrint(en->e), N = lrint(en->n);
 	int fileE = (E % 100000) / 1000, fileN = (N % 100000) / 1000;
 	int offsetE = E % 1000, offsetN = N % 1000;
-	if (strcmp(blk, blkNow)!=0 && blke == (fileE / 10) && blkn == (fileN / 10) && ter->next)
+	if ((strncmp(blk, blkNow, 2) != 0 ||
+		!(blke == (fileE / 10) && blkn == (fileN / 10)))
+		&& ter->next)
 	{
-		LIDARTerrainFile *temp = ter->next, *temp2 = temp;
+		LIDARTerrainFile *temp = ter->next, *temp2;
 		while (temp)
 		{
-			temp = temp2->next;
-			free(temp2->data);
-			free(temp2);
+			mxFree(temp->data);
 			temp2 = temp;
+			temp = temp->next;
+			mxFree(temp2);
 		}
+		ter->next = NULL;
 	}
+	blke = (fileE / 10), blkn = (fileN / 10);
 	strncpy(blkNow, blk, 2);
 	char BLOCK[2];
 	strncpy(BLOCK, blk, 2);
